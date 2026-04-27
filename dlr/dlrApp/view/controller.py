@@ -11,8 +11,11 @@ from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 
 from rest_framework.permissions import AllowAny
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     pagination_class = StandardResultsSetPagination
