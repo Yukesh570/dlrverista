@@ -11,19 +11,9 @@ class Client(models.Model):
     smppPassword = models.CharField(max_length=255)
 
     isDeleted = models.BooleanField(default=False)
-    createdBy = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="puskarclient_created",
-    )
+   
     createdAt = models.DateTimeField(auto_now_add=True)
-    updatedBy = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="puskarclient_updated",
-    )
+    
     updatedAt = models.DateTimeField(auto_now=True)
 
     class Meta:
