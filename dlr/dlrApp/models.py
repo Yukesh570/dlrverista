@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Client(models.Model):
-
+    id = models.IntegerField(primary_key=True, help_text="Manual ID entry")
     name = models.CharField(max_length=255)
 
     DsmppUsername = models.CharField(max_length=255)

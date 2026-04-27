@@ -18,7 +18,7 @@ class ClientAdmin(admin.ModelAdmin):
 
     # Organization in the edit form
     fieldsets = (
-        ("Client Information", {"fields": ("name", "isDeleted")}),
+        ("Client Information", {"fields": ("id", "name", "isDeleted")}),
         (
             "SMPP Credentials",
             {"fields": ("DsmppUsername", "FsmppUsername", "smppPassword")},
