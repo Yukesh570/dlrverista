@@ -31,7 +31,6 @@ ALLOWED_HOSTS = ["185.227.135.93", "localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "dlrApp",
-    "django_filters",
     "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -51,9 +50,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 # Add this at the end of settings.py
-REST_FRAMEWORK = {
-    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
-}
+
 ROOT_URLCONF = "dlr.urls"
 
 TEMPLATES = [
