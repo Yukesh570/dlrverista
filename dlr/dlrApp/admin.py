@@ -5,7 +5,7 @@ from .models import Client
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
     # Fields to display in the list view
-    list_display = ("name", "DsmppUsername", "FsmppUsername", "updatedAt", "isDeleted")
+    list_display = ("id","name", "DsmppUsername", "FsmppUsername", "updatedAt", "isDeleted")
 
     # Clickable links
     list_display_links = ("name",)
