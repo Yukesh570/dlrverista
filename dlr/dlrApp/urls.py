@@ -16,4 +16,14 @@ urlpatterns = [
         ),
         name="client",
     ),
+    path(
+        "duplicateClinet/<int:pk>/",
+        ClientViewSet.as_view(
+            {
+                "put": "update",
+                "patch": "partial_update",
+            }
+        ),
+        name="client",
+    ),
 ]

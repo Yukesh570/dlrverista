@@ -9,11 +9,11 @@ class Client(models.Model):
     DsmppUsername = models.CharField(max_length=255)
     FsmppUsername = models.CharField(max_length=255)
     smppPassword = models.CharField(max_length=255)
-
+    expireDate = models.DateField(null=True, blank=True)
     isDeleted = models.BooleanField(default=False)
-   
+
     createdAt = models.DateTimeField(auto_now_add=True)
-    
+
     updatedAt = models.DateTimeField(auto_now=True)
 
     class Meta:

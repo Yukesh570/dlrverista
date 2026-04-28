@@ -17,6 +17,7 @@ from django.utils.decorators import method_decorator
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ClientViewSet(viewsets.ModelViewSet):
+    queryset = Client.objects.filter(isDeleted=False)
     serializer_class = ClientSerializer
     pagination_class = StandardResultsSetPagination
     permission_classes = [AllowAny]
@@ -52,3 +53,24 @@ class ClientViewSet(viewsets.ModelViewSet):
             FsmppUsername=finalFsmppUsername,
             smppPassword=safe_smpp_password,
         )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        new_name = serializer.validated_data.get("name")
+
+        # Only check for duplicates if they are actually changing the name
+        if new_name and new_name.lower() != instance.name.lower():
+            exist = Client.objects.filter(
+                Q(name__iexact=new_name),
+                isDeleted=False,
+            ).exclude(
+                id=instance.id
+            )  # Crucial: Don't check against itself!
+
+            if exist.exists():
+                raise ValidationError(
+                    {"error": f"Another client is already using the name '{new_name}'."}
+                )
+
+        # Save the new data (name, expireDate, etc.) without touching passwords
+        serializer.save()

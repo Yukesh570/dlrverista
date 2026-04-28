@@ -10,6 +10,7 @@ class ClientSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "DsmppUsername",
+            "expireDate",
             "FsmppUsername",
             "smppPassword",
             "createdAt",
