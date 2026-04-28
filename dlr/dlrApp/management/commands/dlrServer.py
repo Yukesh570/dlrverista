@@ -10,6 +10,7 @@ from asgiref.sync import sync_to_async
 from django.db.models import Q
 
 from dlrApp.models import Client
+from django.utils import timezone  # Use Django's timezone to match your server settings
 
 # Replace this with your actual app import
 
@@ -174,11 +175,34 @@ class Command(BaseCommand):
     @sync_to_async
     def authenticate_client(self, username, password):
         try:
-            return Client.objects.filter(
+            client = Client.objects.filter(
                 (Q(DsmppUsername=username) | Q(FsmppUsername=username)),
                 smppPassword=password,
                 isDeleted=False,
             ).first()
+            print("client", client)
+            if client:
+                today = timezone.now().date()
+                print("clien1111111111111111111111111t", client.expireDate)
+
+                # Check if expireDate exists AND if it is in the past
+                if client.expireDate and client.expireDate < today:
+                    print("22222222222222222222", client)
+
+                    print("AUTH REJECTED | Client expired on", client.expireDate)
+                    logger.warning(
+                        f"AUTH REJECTED | Client '{client.name}' expired on {client.expireDate}"
+                    )
+                    return None  # Or raise an Exception here if you want to send it to the frontend
+                return client
+            logger.warning(
+                f"AUTH FAILED | Invalid credentials for username: {username}"
+            )
+            return None
+
+            # If valid, return the client
+            return client
+
         except Exception as e:
             logger.error(f"DB ERROR | Auth Failed: {e}")
             return None
@@ -228,7 +252,11 @@ class Command(BaseCommand):
                     else:
                         logger.warning(f"AUTH | Failed login attempt for '{sys_id}'")
                         await self.send_pdu(
-                            writer, CMD_BIND_TRANSCEIVER_RESP, 0x0F, seq_num, b"\0"
+                            writer,
+                            CMD_BIND_TRANSCEIVER_RESP,
+                            0x0D,
+                            seq_num,
+                            b"\0",  # 0x0D = bind failed
                         )
                         break
 

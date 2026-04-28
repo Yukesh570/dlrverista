@@ -28,7 +28,14 @@ class ClientAdmin(admin.ModelAdmin):
         ("Client Information", {"fields": ("id", "name", "isDeleted")}),
         (
             "SMPP Credentials",
-            {"fields": ("DsmppUsername", "FsmppUsername", "smppPassword")},
+            {
+                "fields": (
+                    "DsmppUsername",
+                    "FsmppUsername",
+                    "smppPassword",
+                    "expireDate",
+                )
+            },
         ),
         (
             "Audit Metadata",
