@@ -47,4 +47,4 @@ class ClientAdmin(admin.ModelAdmin):
     )
 
     # Make date fields read-only since they use auto_now
-    readonly_fields = ("createdAt", "updatedAt")
+    readonly_fields = ("id", "createdAt", "updatedAt")
