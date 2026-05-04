@@ -125,9 +125,9 @@ class Command(BaseCommand):
 
     async def callApi(self, sms_text, destination, source, client_dlr_status):
         api = (
-            "https://boss.arssapp.com/sms_test/api/sms/deliverAdd"
+            "https://dlrveritas.com/sms_test/api/sms/deliverAdd"
             if client_dlr_status == "DELIVRD"
-            else "https://boss.arssapp.com/sms_test/api/sms/deliveryFailedAdd"
+            else "https://dlrveritas.com/sms_test/api/sms/deliveryFailedAdd"
         )
 
         payload = {
