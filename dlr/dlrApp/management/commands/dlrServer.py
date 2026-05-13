@@ -413,9 +413,10 @@ class Command(BaseCommand):
         timestamp = datetime.datetime.now().strftime("%y%m%d%H%M")
         full_safe_text = sms_info["text"].encode("ascii", "ignore").decode("ascii")[:40]
         dlr_text = f"id:{msg_id} sub:00{'1' if dlr_status == 'DELIVRD' else '0'} dlvrd:00{'1' if dlr_status == 'DELIVRD' else '0'} submit date:{timestamp} done date:{timestamp} stat:{dlr_status} err:000 text:{full_safe_text}"
-
+        # 2. The clean log text (Written to your file, NO dates)
+        log_text = f"id:{msg_id} sub:00{'1' if dlr_status == 'DELIVRD' else '0'} dlvrd:00{'1' if dlr_status == 'DELIVRD' else '0'} stat:{dlr_status} err:000 text:{full_safe_text}"
         # ⚡️ WRITE DLR TO LOG FILE HERE
-        dlr_logger.info(f"To: {sms_info['dest']} | {dlr_text}")
+        dlr_logger.info(f"To: {sms_info['dest']} | {log_text}")
 
         dlr_bytes = dlr_text.encode("ascii", errors="ignore")[:255]
         body = (
