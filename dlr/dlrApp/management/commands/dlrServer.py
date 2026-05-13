@@ -1,4 +1,5 @@
 import asyncio
+import os
 import struct
 import logging
 import datetime
@@ -37,6 +38,19 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+# 2. Special DLR Logger (Writes ONLY to the file)
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+DLR_LOG_FILE = os.path.join(LOG_DIR, "dlr_records.log")
+
+dlr_logger = logging.getLogger("dlr_tracker")
+dlr_logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(DLR_LOG_FILE, encoding="utf-8")
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+dlr_logger.addHandler(file_handler)
+dlr_logger.propagate = False  # ⚡️
 
 
 class Command(BaseCommand):
@@ -399,6 +413,10 @@ class Command(BaseCommand):
         timestamp = datetime.datetime.now().strftime("%y%m%d%H%M")
         full_safe_text = sms_info["text"].encode("ascii", "ignore").decode("ascii")[:40]
         dlr_text = f"id:{msg_id} sub:00{'1' if dlr_status == 'DELIVRD' else '0'} dlvrd:00{'1' if dlr_status == 'DELIVRD' else '0'} submit date:{timestamp} done date:{timestamp} stat:{dlr_status} err:000 text:{full_safe_text}"
+
+        # ⚡️ WRITE DLR TO LOG FILE HERE
+        dlr_logger.info(f"To: {sms_info['dest']} | {dlr_text}")
+
         dlr_bytes = dlr_text.encode("ascii", errors="ignore")[:255]
         body = (
             b"\0"
