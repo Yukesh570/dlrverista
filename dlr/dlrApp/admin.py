@@ -33,6 +33,7 @@ class ClientAdmin(admin.ModelAdmin):
                     "DsmppUsername",
                     "FsmppUsername",
                     "smppPassword",
+                    "is_limit",
                     "expireDate",
                 )
             },

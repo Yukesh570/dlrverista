@@ -8,6 +8,7 @@ class Client(models.Model):
     DsmppUsername = models.CharField(max_length=255)
     FsmppUsername = models.CharField(max_length=255)
     smppPassword = models.CharField(max_length=255)
+    is_limit = models.IntegerField(default=0)
     expireDate = models.DateField(null=True, blank=True)
     isDeleted = models.BooleanField(default=False)
 
