@@ -9,7 +9,7 @@ import aiohttp
 from django.core.management.base import BaseCommand
 from asgiref.sync import sync_to_async
 from django.db.models import Q
-
+import requests
 from dlrApp.models import Client
 from django.utils import timezone  # Use Django's timezone to match your server settings
 
@@ -58,34 +58,35 @@ class Command(BaseCommand):
 
     # In-memory store for concatenated messages
     message_store = {}
+    client_balances = {}
     MESSAGE_TIMEOUT = 300
     # Add this at the top of the class under MESSAGE_TIMEOUT
     api_queue = asyncio.Queue()
 
     # Add this new function anywhere in your Command class
-    async def api_worker(self):
-        """Background worker that continuously pulls from the queue and hits the API."""
-        while True:
-            # Wait until a message is put into the queue
-            payload = await self.api_queue.get()
-            try:
-                response = await self.callApi(
-                    payload["text"],
-                    payload["dest"],
-                    payload["source"],
-                    payload["status"],
-                )
-                # print("API Response Status:", response.status_code)
+    # async def api_worker(self):
+    #     """Background worker that continuously pulls from the queue and hits the API."""
+    #     while True:
+    #         # Wait until a message is put into the queue
+    #         payload = await self.api_queue.get()
+    #         try:
+    #             response = await self.callApi(
+    #                 payload["text"],
+    #                 payload["dest"],
+    #                 payload["source"],
+    #                 payload["status"],
+    #             )
+    #             # print("API Response Status:", response.status_code)
 
-                if response.status_code == 406:
-                    logger.warning(
-                        f"REJECTED | Subscription Expired for To: {payload['dest']}"
-                    )
-            except Exception as e:
-                logger.error(f"Worker API Error: {e}")
-            finally:
-                # Tell the queue this task is finished
-                self.api_queue.task_done()
+    #             if response.status_code == 406:
+    #                 logger.warning(
+    #                     f"REJECTED | Subscription Expired for To: {payload['dest']}"
+    #                 )
+    #         except Exception as e:
+    #             logger.error(f"Worker API Error: {e}")
+    #         finally:
+    #             # Tell the queue this task is finished
+    #             self.api_queue.task_done()
 
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.SUCCESS(f"Starting SMPP Server..."))
@@ -105,7 +106,7 @@ class Command(BaseCommand):
         self.http_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
 
         cleanup_task = asyncio.create_task(self.cleanup_stale_messages())
-        workers = [asyncio.create_task(self.api_worker()) for _ in range(50)]
+        # workers = [asyncio.create_task(self.api_worker()) for _ in range(50)]
         server1 = await asyncio.start_server(self.handle_client, HOST, PORT)
         server2 = await asyncio.start_server(self.handle_client, HOST1, PORT1)
 
@@ -194,28 +195,54 @@ class Command(BaseCommand):
                 smppPassword=password,
                 isDeleted=False,
             ).first()
-            print("client", client)
+
             if client:
                 today = timezone.now().date()
-                print("clien1111111111111111111111111t", client.expireDate)
 
-                # Check if expireDate exists AND if it is in the past
+                # Check Date Expiry
                 if client.expireDate and client.expireDate < today:
-                    print("22222222222222222222", client)
+                    logger.warning(f"AUTH REJECTED | Client '{client.name}' expired.")
+                    return None
 
-                    print("AUTH REJECTED | Client expired on", client.expireDate)
-                    logger.warning(
-                        f"AUTH REJECTED | Client '{client.name}' expired on {client.expireDate}"
-                    )
-                    return None  # Or raise an Exception here if you want to send it to the frontend
+                # ⚡️ HIT API AND STORE BALANCE
+                if client.is_limit == 1:
+                    try:
+
+                        # api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID={client.id}"
+                        api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID=22"
+
+                        response = requests.get(api_url, timeout=5)
+
+                        if response.status_code == 200:
+                            api_data = response.json()
+                            print(f"API Remaining SMS for {client.name}: {api_data}")
+                            if api_data.get("status") is True:
+                                # Save the exact remaining amount to the shared dictionary
+                                self.client_balances[client.id] = int(
+                                    api_data.get("remaining", 0)
+                                )
+                                logger.info(
+                                    f"AUTH API CHECK | Client {client.name} | SMS Remaining: {self.client_balances[client.id]}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"AUTH REJECTED | API returned false status for {client.name}"
+                                )
+                                return None
+                        else:
+                            logger.warning(
+                                f"AUTH API FAILED | HTTP {response.status_code}"
+                            )
+                            return None
+
+                    except Exception as api_err:
+                        logger.error(f"AUTH API ERROR | {api_err}")
+                        return None
+
                 return client
-            logger.warning(
-                f"AUTH FAILED | Invalid credentials for username: {username}"
-            )
-            return None
 
-            # If valid, return the client
-            return client
+            logger.warning(f"AUTH FAILED | Invalid credentials: {username}")
+            return None
 
         except Exception as e:
             logger.error(f"DB ERROR | Auth Failed: {e}")
@@ -281,9 +308,40 @@ class Command(BaseCommand):
                         )
                         continue
 
+                    # ⚡️ 1. PARSE MESSAGE FIRST (We need the info for the DLR)
                     sms_info = self.parse_submit_sm(body_data)
                     msg_id_str = await self.generate_message_id()
 
+                    # ⚡️ 2. CHECK BALANCE
+                    if client_obj.is_limit == 1:
+                        current_balance = self.client_balances.get(client_obj.id, 0)
+                        if current_balance <= 0:
+                            logger.warning(
+                                f"🛑 BLOCKED | {client_obj.name} has 0 balance! Sending REJECTD DLR."
+                            )
+                            # A) Pretend to Accept it (so the client expects a DLR)
+                            await self.send_pdu(
+                                writer,
+                                CMD_SUBMIT_SM_RESP,
+                                ESME_ROK,
+                                seq_num,
+                                msg_id_str.encode() + b"\0",
+                            )
+                            # B) Instantly fire the REJECTD DLR
+                            await self.send_dlr(
+                                writer,
+                                sms_info,
+                                sms_info["text"],
+                                msg_id_str,
+                                seq_num + 1000,
+                                "REJECTD",
+                            )
+                            continue
+
+                        # Deduct the credit immediately in memory
+                        self.client_balances[client_obj.id] -= 1
+
+                    # ⚡️ 3. NORMAL SEGMENTATION & PROCESSING
                     if sms_info.get("is_segmented"):
                         ref = sms_info["ref_num"]
                         store_key = f"{sms_info['source']}_{sms_info['dest']}_{ref}"
