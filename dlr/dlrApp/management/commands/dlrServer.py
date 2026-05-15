@@ -64,29 +64,29 @@ class Command(BaseCommand):
     api_queue = asyncio.Queue()
 
     # Add this new function anywhere in your Command class
-    # async def api_worker(self):
-    #     """Background worker that continuously pulls from the queue and hits the API."""
-    #     while True:
-    #         # Wait until a message is put into the queue
-    #         payload = await self.api_queue.get()
-    #         try:
-    #             response = await self.callApi(
-    #                 payload["text"],
-    #                 payload["dest"],
-    #                 payload["source"],
-    #                 payload["status"],
-    #             )
-    #             # print("API Response Status:", response.status_code)
+    async def api_worker(self):
+        """Background worker that continuously pulls from the queue and hits the API."""
+        while True:
+            # Wait until a message is put into the queue
+            payload = await self.api_queue.get()
+            try:
+                response = await self.callApi(
+                    payload["text"],
+                    payload["dest"],
+                    payload["source"],
+                    payload["status"],
+                )
+                # print("API Response Status:", response.status_code)
 
-    #             if response.status_code == 406:
-    #                 logger.warning(
-    #                     f"REJECTED | Subscription Expired for To: {payload['dest']}"
-    #                 )
-    #         except Exception as e:
-    #             logger.error(f"Worker API Error: {e}")
-    #         finally:
-    #             # Tell the queue this task is finished
-    #             self.api_queue.task_done()
+                if response.status_code == 406:
+                    logger.warning(
+                        f"REJECTED | Subscription Expired for To: {payload['dest']}"
+                    )
+            except Exception as e:
+                logger.error(f"Worker API Error: {e}")
+            finally:
+                # Tell the queue this task is finished
+                self.api_queue.task_done()
 
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.SUCCESS(f"Starting SMPP Server..."))
@@ -106,7 +106,7 @@ class Command(BaseCommand):
         self.http_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
 
         cleanup_task = asyncio.create_task(self.cleanup_stale_messages())
-        # workers = [asyncio.create_task(self.api_worker()) for _ in range(50)]
+        workers = [asyncio.create_task(self.api_worker()) for _ in range(50)]
         server1 = await asyncio.start_server(self.handle_client, HOST, PORT)
         server2 = await asyncio.start_server(self.handle_client, HOST1, PORT1)
 
@@ -208,14 +208,13 @@ class Command(BaseCommand):
                 if client.is_limit == 1:
                     try:
 
-                        # api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID={client.id}"
-                        api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID=22"
+                        api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID={client.id}"
+                        # api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID=22"
 
                         response = requests.get(api_url, timeout=5)
 
                         if response.status_code == 200:
                             api_data = response.json()
-                            print(f"API Remaining SMS for {client.name}: {api_data}")
                             if api_data.get("status") is True:
                                 # Save the exact remaining amount to the shared dictionary
                                 self.client_balances[client.id] = int(
@@ -308,11 +307,10 @@ class Command(BaseCommand):
                         )
                         continue
 
-                    # ⚡️ 1. PARSE MESSAGE FIRST (We need the info for the DLR)
                     sms_info = self.parse_submit_sm(body_data)
                     msg_id_str = await self.generate_message_id()
 
-                    # ⚡️ 2. CHECK BALANCE
+                    # CHECK BALANCE
                     if client_obj.is_limit == 1:
                         current_balance = self.client_balances.get(client_obj.id, 0)
                         if current_balance <= 0:
