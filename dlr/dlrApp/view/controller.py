@@ -37,14 +37,14 @@ class ClientViewSet(viewsets.ModelViewSet):
         finalFsmppUsername = f"{safe_smpp_username}{suffix_f}"
         safe_smpp_password = f"{prefix}{suffix_p}"
         print("nam1111111111111111111111111111111111111e", name)
-        exist = Client.objects.filter(
-            Q(name__iexact=name),
-            isDeleted=False,
-        )
-        if exist.exists():
-            raise ValidationError(
-                {"error": "Client with this name or smppUsername already exists."}
-            )
+        # exist = Client.objects.filter(
+        #     Q(name__iexact=name),
+        #     isDeleted=False,
+        # )
+        # if exist.exists():
+        #     raise ValidationError(
+        #         {"error": "Client with this name or smppUsername already exists."}
+        #     )
 
         clean_name = name.replace(" ", "")
 
