@@ -212,7 +212,9 @@ class Command(BaseCommand):
                         # api_url = f"https://dlrveritas.com/sms_test/api/sms/remaining_sms?userID=22"
 
                         response = requests.get(api_url, timeout=5)
-
+                        # print(
+                        #     f"Balance API Response for {client.name}: {response.status_code} - {response.text}"
+                        # )
                         if response.status_code == 200:
                             api_data = response.json()
                             if api_data.get("status") is True:
@@ -332,7 +334,7 @@ class Command(BaseCommand):
                                 sms_info["text"],
                                 msg_id_str,
                                 seq_num + 1000,
-                                "REJECTD",
+                                "EXPIRED",
                             )
                             continue
 
