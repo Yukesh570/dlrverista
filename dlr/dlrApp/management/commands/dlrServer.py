@@ -327,6 +327,9 @@ class Command(BaseCommand):
                                 seq_num,
                                 msg_id_str.encode() + b"\0",
                             )
+                            if not writer.is_closing():
+                                writer.close()
+                                await writer.wait_closed()
                             # B) Instantly fire the REJECTD DLR
                             # await self.send_dlr(
                             #     writer,
