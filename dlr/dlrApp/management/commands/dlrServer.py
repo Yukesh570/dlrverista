@@ -328,14 +328,14 @@ class Command(BaseCommand):
                                 msg_id_str.encode() + b"\0",
                             )
                             # B) Instantly fire the REJECTD DLR
-                            await self.send_dlr(
-                                writer,
-                                sms_info,
-                                sms_info["text"],
-                                msg_id_str,
-                                seq_num + 1000,
-                                "EXPIRED",
-                            )
+                            # await self.send_dlr(
+                            #     writer,
+                            #     sms_info,
+                            #     sms_info["text"],
+                            #     msg_id_str,
+                            #     seq_num + 1000,
+                            #     "EXPIRED",
+                            # )
                             continue
 
                         # Deduct the credit immediately in memory
