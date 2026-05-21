@@ -258,7 +258,7 @@ class Command(BaseCommand):
         client_dlr_status = (
             "DELIVRD"
             if server_port == 2776
-            else "REJECTD" if server_port == 2777 else "UNKNOWN"
+            else "UNDELIV" if server_port == 2777 else "UNKNOWN"
         )
         is_authenticated = False
         client_obj = None
@@ -330,6 +330,9 @@ class Command(BaseCommand):
                             if not writer.is_closing():
                                 writer.close()
                                 await writer.wait_closed()
+                                logger.info(
+                                    f"SOCKET | Connection closed for {client_obj.name} due to zero balance."
+                                )
                             # B) Instantly fire the REJECTD DLR
                             # await self.send_dlr(
                             #     writer,
