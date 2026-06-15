@@ -50,7 +50,7 @@ dlr_logger.setLevel(logging.INFO)
 file_handler = logging.FileHandler(DLR_LOG_FILE, encoding="utf-8")
 file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
 dlr_logger.addHandler(file_handler)
-dlr_logger.propagate = False  # ⚡️
+dlr_logger.propagate = False
 
 
 class Command(BaseCommand):
@@ -99,9 +99,9 @@ class Command(BaseCommand):
         return str(uuid.uuid4())
 
     async def run_server(self):
-        # ⚡️ OPTIMIZATION: High-concurrency pool for the slow API (1.27s latency)
+        # High-concurrency pool for the slow API (1.27s latency)
         connector = aiohttp.TCPConnector(limit=1000, ttl_dns_cache=300)
-        # ⚡️ SAFETY: Strict timeout to prevent hanging background tasks
+        # Strict timeout to prevent hanging background tasks
         timeout = aiohttp.ClientTimeout(total=15)
         self.http_session = aiohttp.ClientSession(connector=connector, timeout=timeout)
 
@@ -155,14 +155,13 @@ class Command(BaseCommand):
         try:
             # Use json=payload if they want JSON, data=payload if they want Form Data
             async with self.http_session.post(api, json=payload) as res:
-                response_text = await res.text()  # ⚡️ READ THE ACTUAL BODY
+                response_text = await res.text()  # READ THE ACTUAL BODY
                 duration = time.time() - start_time
 
-                # ⚡️ PRINT THE RAW RESPONSE FROM THEIR SERVER
                 print(f"API Reply for {destination}: {res.status} - {response_text}")
 
                 if duration > 2.0:
-                    logger.warning(f"🐢 SLOW API | {duration:.2f}s | To: {destination}")
+                    logger.warning(f" SLOW API | {duration:.2f}s | To: {destination}")
 
                 class DummyResponse:
                     status_code = res.status
@@ -172,7 +171,7 @@ class Command(BaseCommand):
 
         except asyncio.TimeoutError:
             logger.error(
-                f"🚨 API TIMEOUT | {destination} | API failed to respond within 15s"
+                f"API TIMEOUT | {destination} | API failed to respond within 15s"
             )
 
             class DummyResponse:
@@ -180,7 +179,7 @@ class Command(BaseCommand):
 
             return DummyResponse()
         except Exception as e:
-            logger.error(f"❌ API ERROR | {destination} | {str(e)}")
+            logger.error(f" API ERROR | {destination} | {str(e)}")
 
             class DummyResponse:
                 status_code = 500
@@ -204,7 +203,7 @@ class Command(BaseCommand):
                     logger.warning(f"AUTH REJECTED | Client '{client.name}' expired.")
                     return None
 
-                # ⚡️ HIT API AND STORE BALANCE
+                # HIT API AND STORE BALANCE
                 if client.is_limit == 1:
                     try:
 
@@ -265,7 +264,7 @@ class Command(BaseCommand):
 
         try:
             while True:
-                # ⚡️ SOCKET TIMEOUT: 120s idle limit
+                # SOCKET TIMEOUT: 120s idle limit
                 header_data = await asyncio.wait_for(reader.read(16), timeout=120.0)
                 if not header_data or len(header_data) < 16:
                     break
@@ -317,9 +316,8 @@ class Command(BaseCommand):
                         current_balance = self.client_balances.get(client_obj.id, 0)
                         if current_balance <= 0:
                             logger.warning(
-                                f"🛑 BLOCKED | {client_obj.name} has 0 balance! Sending REJECTD DLR."
+                                f" BLOCKED | {client_obj.name} has 0 balance! Sending REJECTD DLR."
                             )
-                            # A) Pretend to Accept it (so the client expects a DLR)
                             await self.send_pdu(
                                 writer,
                                 CMD_SUBMIT_SM_RESP,
@@ -347,7 +345,7 @@ class Command(BaseCommand):
                         # Deduct the credit immediately in memory
                         self.client_balances[client_obj.id] -= 1
 
-                    # ⚡️ 3. NORMAL SEGMENTATION & PROCESSING
+                    # NORMAL SEGMENTATION & PROCESSING
                     if sms_info.get("is_segmented"):
                         ref = sms_info["ref_num"]
                         store_key = f"{sms_info['source']}_{sms_info['dest']}_{ref}"
@@ -382,7 +380,18 @@ class Command(BaseCommand):
                                 seq_num,
                                 msg_id_str.encode() + b"\0",
                             )
-                            # when continue hits it goes up to the while true  loop
+                            try:
+                                await self.send_dlr(
+                                    writer,
+                                    sms_info,
+                                    sms_info["text"],
+                                    msg_id_str,
+                                    seq_num + 1000,
+                                    client_dlr_status,
+                                )
+                            except Exception as e:
+                                logger.error(f"Failed to send DLR for part: {e}")
+
                             continue
 
                     logger.info(
@@ -433,7 +442,7 @@ class Command(BaseCommand):
                     # Add a timeout so it doesn't hang if the client vanished
                     await asyncio.wait_for(writer.wait_closed(), timeout=5.0)
             except:
-                pass  # F
+                pass
 
     def parse_submit_sm(self, body):
         offset = 0
@@ -479,7 +488,7 @@ class Command(BaseCommand):
         dlr_text = f"id:{msg_id} sub:00{'1' if dlr_status == 'DELIVRD' else '0'} dlvrd:00{'1' if dlr_status == 'DELIVRD' else '0'} submit date:{timestamp} done date:{timestamp} stat:{dlr_status} err:000 text:{full_safe_text}"
         # 2. The clean log text (Written to your file, NO dates)
         log_text = f"id:{msg_id} sub:00{'1' if dlr_status == 'DELIVRD' else '0'} dlvrd:00{'1' if dlr_status == 'DELIVRD' else '0'} stat:{dlr_status} err:000 text:{full_safe_text}"
-        # ⚡️ WRITE DLR TO LOG FILE HERE
+        # WRITE DLR TO LOG FILE HERE
         dlr_logger.info(f"To: {sms_info['dest']} | {log_text}")
 
         dlr_bytes = dlr_text.encode("ascii", errors="ignore")[:255]
